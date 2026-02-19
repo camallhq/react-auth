@@ -7,6 +7,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: production  # optional, adds manual approval gate
+
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPMJS }}  # move here, job level
 
     steps:
       - name: Checkout
@@ -23,5 +27,3 @@ jobs:
 
       - name: Publish
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
