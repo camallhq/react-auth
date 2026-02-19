@@ -3,10 +3,10 @@ Camall react authentication provider.
 
 ## Using
 ```js
-import { AuthProvider, RequireAuth } from "@your-scope/react-auth";
+import { AuthProvider, RequireAuth } from "@camall/react-auth";
 
 const config = {
-  issuer: "https://t123.your-idp.com",
+  issuer: "https://c00000.camall.io",
   clientId: "spa-client",
   redirectUri: window.location.origin + "/auth/callback",
   scopes: ["openid", "profile", "email", "offline_access"], // only if you support refresh tokens
@@ -27,7 +27,7 @@ export function App() {
 
 ## Using authfetch
 ```js
-import { useAuth, authFetch } from "@your-scope/react-auth";
+import { useAuth, authFetch } from "@camall/react-auth";
 
 function Example() {
   const auth = useAuth();
