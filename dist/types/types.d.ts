@@ -1,4 +1,5 @@
 export type AuthStorage = "memory" | "session" | "local";
+export type PostLoginNavigationMode = "replace" | "history";
 export type AuthConfig = {
     issuer: string;
     authorizeEndpoint?: string;
@@ -18,6 +19,7 @@ export type AuthConfig = {
     refreshLeewaySeconds?: number;
     refreshLockKey?: string;
     refreshLockTtlMs?: number;
+    postLoginNavigation?: PostLoginNavigationMode;
 };
 export type TokenSet = {
     accessToken: string;

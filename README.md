@@ -71,6 +71,7 @@ Pass an `AuthConfig` object to `<AuthProvider config={...}>`.
 | `refreshLeewaySeconds` | `number` | `90` | Refresh the access token this many seconds before it actually expires |
 | `refreshLockKey` | `string` | `"ra_refresh_lock"` | Storage key used for the cross-tab refresh lock |
 | `refreshLockTtlMs` | `number` | `15000` | How long (ms) the refresh lock can be held before it is force-released |
+| `postLoginNavigation` | `"replace" \| "history"` | `"replace"` | Callback completion navigation strategy (`"replace"` does full navigation; `"history"` uses `history.replaceState`) |
 
 ## `<RequireAuth>`
 

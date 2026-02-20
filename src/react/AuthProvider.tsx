@@ -46,8 +46,14 @@ export function AuthProvider(props: { config: AuthConfig; children: React.ReactN
     const appRedirect = storage.getItem(Keys.appRedirect) ?? "/";
     storage.removeItem(Keys.appRedirect);
 
-    // Clean query params then navigate to the original path
-    window.history.replaceState({}, document.title, appRedirect);
+    if ((cfg.postLoginNavigation ?? "replace") === "replace") {
+      // Use a real navigation so routers on callback routes (e.g. /auth/callback)
+      // immediately transition without requiring a manual page refresh.
+      window.location.replace(appRedirect);
+    } else {
+      // Keep a soft URL update for apps that prefer to avoid a full navigation.
+      window.history.replaceState({}, document.title, appRedirect);
+    }
 
     setState({ isLoading: false, isAuthenticated: true, tokens, user });
     return true;

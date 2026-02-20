@@ -1,5 +1,6 @@
 // src/types.ts
 export type AuthStorage = "memory" | "session" | "local";
+export type PostLoginNavigationMode = "replace" | "history";
 
 /**
  * AuthConfig defines the configuration options for the authentication system.
@@ -32,6 +33,11 @@ export type AuthConfig = {
   refreshLeewaySeconds?: number;  // default 90 (refresh a bit before expiry)
   refreshLockKey?: string;        // default "ra_refresh_lock"
   refreshLockTtlMs?: number;      // default 15000
+
+  // How to navigate after handling OAuth callback.
+  // "replace" performs a full navigation (default, router-safe).
+  // "history" only updates URL with history.replaceState.
+  postLoginNavigation?: PostLoginNavigationMode;
 };
 
 export type TokenSet = {

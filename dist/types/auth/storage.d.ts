@@ -7,6 +7,7 @@ export declare const Keys: {
     nonce: string;
     tokens: string;
     user: string;
+    appRedirect: string;
 };
 export declare function saveTokens(s: StorageLike, tokens: TokenSet): void;
 export declare function loadTokens(s: StorageLike): TokenSet | undefined;

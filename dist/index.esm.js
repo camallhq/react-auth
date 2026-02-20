@@ -20,6 +20,7 @@ const Keys = {
     nonce: "ra_nonce",
     tokens: "ra_tokens",
     user: "ra_user",
+    appRedirect: "ra_app_redirect",
 };
 function saveTokens(s, tokens) {
     s.setItem(Keys.tokens, JSON.stringify(tokens));
@@ -41,6 +42,7 @@ function clearAuth(s) {
     s.removeItem(Keys.pkceVerifier);
     s.removeItem(Keys.state);
     s.removeItem(Keys.nonce);
+    s.removeItem(Keys.appRedirect);
 }
 
 const encoder = new TextEncoder();
@@ -64,9 +66,9 @@ function endpoints(cfg) {
     var _a, _b, _c;
     const base = cfg.issuer.replace(/\/+$/, "");
     return {
-        authorize: (_a = cfg.authorizeEndpoint) !== null && _a !== void 0 ? _a : `${base}/oauth2/authorize`,
-        token: (_b = cfg.tokenEndpoint) !== null && _b !== void 0 ? _b : `${base}/oauth2/token`,
-        userInfo: (_c = cfg.userInfoEndpoint) !== null && _c !== void 0 ? _c : `${base}/oauth2/userinfo`,
+        authorize: (_a = cfg.authorizeEndpoint) !== null && _a !== void 0 ? _a : `${base}/oidc/authorize`,
+        token: (_b = cfg.tokenEndpoint) !== null && _b !== void 0 ? _b : `${base}/oidc/token`,
+        userInfo: (_c = cfg.userInfoEndpoint) !== null && _c !== void 0 ? _c : `${base}/oidc/userinfo`,
         endSession: cfg.endSessionEndpoint,
     };
 }
@@ -202,6 +204,7 @@ function AuthProvider(props) {
         isAuthenticated: false,
     });
     const finalizeFromCallback = useCallback(async () => {
+        var _a, _b;
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
         const returnedState = url.searchParams.get("state");
@@ -216,9 +219,14 @@ function AuthProvider(props) {
         saveTokens(storage, tokens);
         const user = await fetchUserInfo(cfg, tokens.accessToken);
         storage.setItem(Keys.user, JSON.stringify(user));
-        url.searchParams.delete("code");
-        url.searchParams.delete("state");
-        window.history.replaceState({}, document.title, url.toString());
+        const appRedirect = (_a = storage.getItem(Keys.appRedirect)) !== null && _a !== void 0 ? _a : "/";
+        storage.removeItem(Keys.appRedirect);
+        if (((_b = cfg.postLoginNavigation) !== null && _b !== void 0 ? _b : "replace") === "replace") {
+            window.location.replace(appRedirect);
+        }
+        else {
+            window.history.replaceState({}, document.title, appRedirect);
+        }
         setState({ isLoading: false, isAuthenticated: true, tokens, user });
         return true;
     }, [cfg, storage]);
@@ -264,6 +272,7 @@ function AuthProvider(props) {
         storage.setItem(Keys.pkceVerifier, built.verifier);
         storage.setItem(Keys.state, built.state);
         storage.setItem(Keys.nonce, built.nonce);
+        storage.setItem(Keys.appRedirect, appRedirect);
         window.location.assign(built.url);
     }, [cfg, storage]);
     const logout = useCallback(async () => {
