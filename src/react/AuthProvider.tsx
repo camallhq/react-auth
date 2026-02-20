@@ -42,10 +42,12 @@ export function AuthProvider(props: { config: AuthConfig; children: React.ReactN
     const user = await fetchUserInfo(cfg, tokens.accessToken);
     storage.setItem(Keys.user, JSON.stringify(user));
 
-    // Clean query params
-    url.searchParams.delete("code");
-    url.searchParams.delete("state");
-    window.history.replaceState({}, document.title, url.toString());
+    // Resolve the original pre-login path, falling back to "/"
+    const appRedirect = storage.getItem(Keys.appRedirect) ?? "/";
+    storage.removeItem(Keys.appRedirect);
+
+    // Clean query params then navigate to the original path
+    window.history.replaceState({}, document.title, appRedirect);
 
     setState({ isLoading: false, isAuthenticated: true, tokens, user });
     return true;
@@ -95,6 +97,7 @@ export function AuthProvider(props: { config: AuthConfig; children: React.ReactN
     storage.setItem(Keys.pkceVerifier, built.verifier);
     storage.setItem(Keys.state, built.state);
     storage.setItem(Keys.nonce, built.nonce);
+    storage.setItem(Keys.appRedirect, appRedirect);
 
     window.location.assign(built.url);
   }, [cfg, storage]);

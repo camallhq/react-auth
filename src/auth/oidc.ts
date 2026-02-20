@@ -5,9 +5,9 @@ import { randomString, sha256Base64Url } from "./pkce";
 export function endpoints(cfg: AuthConfig) {
   const base = cfg.issuer.replace(/\/+$/, "");
   return {
-    authorize: cfg.authorizeEndpoint ?? `${base}/oauth2/authorize`,
-    token: cfg.tokenEndpoint ?? `${base}/oauth2/token`,
-    userInfo: cfg.userInfoEndpoint ?? `${base}/oauth2/userinfo`,
+    authorize: cfg.authorizeEndpoint ?? `${base}/oidc/authorize`,
+    token: cfg.tokenEndpoint ?? `${base}/oidc/token`,
+    userInfo: cfg.userInfoEndpoint ?? `${base}/oidc/userinfo`,
     endSession: cfg.endSessionEndpoint,
   };
 }

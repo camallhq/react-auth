@@ -5,7 +5,7 @@
         "type": "git",
         "url": "https://github.com/camallhq/react-auth"
     },
-    "version": "1.10.5",
+    "version": "1.10.12",
     "license": "MIT",
     "keywords": [
         "auth",

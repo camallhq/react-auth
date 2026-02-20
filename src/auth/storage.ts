@@ -22,6 +22,7 @@ export const Keys = {
   nonce: "ra_nonce",
   tokens: "ra_tokens",
   user: "ra_user",
+  appRedirect: "ra_app_redirect",
 };
 
 export function saveTokens(s: StorageLike, tokens: TokenSet) {
@@ -38,4 +39,5 @@ export function clearAuth(s: StorageLike) {
   s.removeItem(Keys.pkceVerifier);
   s.removeItem(Keys.state);
   s.removeItem(Keys.nonce);
+  s.removeItem(Keys.appRedirect);
 }
