@@ -198,6 +198,10 @@ function isExpired(tokens, skewSeconds) {
     const now = Math.floor(Date.now() / 1000);
     return tokens.expiresAt - skewSeconds <= now;
 }
+function shouldRefreshTokens(tokens, leewaySeconds) {
+    const now = Math.floor(Date.now() / 1000);
+    return tokens.expiresAt - leewaySeconds <= now;
+}
 function AuthProvider(props) {
     const cfg = props.config;
     const storage = React.useMemo(() => { var _a; return resolveStorage((_a = cfg.storage) !== null && _a !== void 0 ? _a : "session"); }, [cfg.storage]);
@@ -205,6 +209,37 @@ function AuthProvider(props) {
         isLoading: true,
         isAuthenticated: false,
     });
+    const refreshIfNeeded = React.useCallback(async () => {
+        var _a, _b, _c;
+        const tokens = loadTokens(storage);
+        if (!tokens)
+            return undefined;
+        if (cfg.useRefreshToken === false)
+            return tokens;
+        if (!tokens.refreshToken)
+            return tokens;
+        const leeway = (_a = cfg.refreshLeewaySeconds) !== null && _a !== void 0 ? _a : 90;
+        if (!shouldRefreshTokens(tokens, leeway))
+            return tokens;
+        const lockKey = (_b = cfg.refreshLockKey) !== null && _b !== void 0 ? _b : "ra_refresh_lock";
+        const ttl = (_c = cfg.refreshLockTtlMs) !== null && _c !== void 0 ? _c : 15000;
+        if (!tryAcquireLock(storage, lockKey, ttl)) {
+            await waitForUnlock(storage, lockKey, 6000);
+            return loadTokens(storage);
+        }
+        try {
+            const next = await refreshTokens(cfg, tokens.refreshToken);
+            saveTokens(storage, next);
+            setState((s) => ({ ...s, isAuthenticated: true, tokens: next }));
+            return next;
+        }
+        catch (_d) {
+            return undefined;
+        }
+        finally {
+            releaseLock(storage, lockKey);
+        }
+    }, [cfg, storage]);
     const finalizeFromCallback = React.useCallback(async () => {
         var _a, _b;
         const url = new URL(window.location.href);
@@ -217,23 +252,28 @@ function AuthProvider(props) {
         if (!expectedState || expectedState !== returnedState || !verifier) {
             throw new Error("Invalid auth callback (state/verifier mismatch)");
         }
+        window.history.replaceState({}, document.title, window.location.pathname);
+        storage.removeItem(Keys.state);
+        storage.removeItem(Keys.pkceVerifier);
+        storage.removeItem(Keys.nonce);
         const tokens = await exchangeCodeForTokens(cfg, code, verifier);
         saveTokens(storage, tokens);
         const user = await fetchUserInfo(cfg, tokens.accessToken);
         storage.setItem(Keys.user, JSON.stringify(user));
         const appRedirect = (_a = storage.getItem(Keys.appRedirect)) !== null && _a !== void 0 ? _a : "/";
         storage.removeItem(Keys.appRedirect);
+        setState({ isLoading: false, isAuthenticated: true, tokens, user });
         if (((_b = cfg.postLoginNavigation) !== null && _b !== void 0 ? _b : "replace") === "replace") {
             window.location.replace(appRedirect);
         }
         else {
             window.history.replaceState({}, document.title, appRedirect);
+            window.dispatchEvent(new PopStateEvent("popstate", { state: null }));
         }
-        setState({ isLoading: false, isAuthenticated: true, tokens, user });
         return true;
     }, [cfg, storage]);
     const boot = React.useCallback(async () => {
-        var _a, _b;
+        var _a, _b, _c;
         try {
             const handled = await finalizeFromCallback();
             if (handled)
@@ -243,30 +283,48 @@ function AuthProvider(props) {
                 setState({ isLoading: false, isAuthenticated: false });
                 return;
             }
-            if (tokens && cfg.useRefreshToken && tokens.refreshToken && shouldRefresh(tokens)) {
-                const next = await refreshIfNeeded();
-                if (!next) {
-                    setState({ isLoading: false, isAuthenticated: false });
-                    return;
-                }
-                setState((s) => ({ ...s, isLoading: false, isAuthenticated: true, tokens: next }));
-                return;
-            }
-            if (isExpired(tokens, (_a = cfg.clockSkewSeconds) !== null && _a !== void 0 ? _a : 60)) {
+            const rawUser = storage.getItem(Keys.user);
+            const user = rawUser ? JSON.parse(rawUser) : undefined;
+            const leeway = (_a = cfg.refreshLeewaySeconds) !== null && _a !== void 0 ? _a : 90;
+            const needsRefresh = cfg.useRefreshToken !== false &&
+                tokens.refreshToken &&
+                shouldRefreshTokens(tokens, leeway);
+            const hardExpired = isExpired(tokens, (_b = cfg.clockSkewSeconds) !== null && _b !== void 0 ? _b : 60);
+            if (hardExpired && !needsRefresh) {
                 clearAuth(storage);
                 setState({ isLoading: false, isAuthenticated: false });
                 return;
             }
-            const rawUser = storage.getItem(Keys.user);
-            const user = rawUser ? JSON.parse(rawUser) : undefined;
             setState({ isLoading: false, isAuthenticated: true, tokens, user });
+            if (needsRefresh) {
+                const next = await refreshIfNeeded();
+                if (!next) {
+                    clearAuth(storage);
+                    setState({ isLoading: false, isAuthenticated: false });
+                }
+            }
         }
         catch (e) {
             clearAuth(storage);
-            setState({ isLoading: false, isAuthenticated: false, error: (_b = e === null || e === void 0 ? void 0 : e.message) !== null && _b !== void 0 ? _b : "Auth error" });
+            setState({ isLoading: false, isAuthenticated: false, error: (_c = e === null || e === void 0 ? void 0 : e.message) !== null && _c !== void 0 ? _c : "Auth error" });
         }
-    }, [cfg.clockSkewSeconds, finalizeFromCallback, storage]);
+    }, [cfg, finalizeFromCallback, storage, refreshIfNeeded]);
     React.useEffect(() => { void boot(); }, [boot]);
+    React.useEffect(() => {
+        if (cfg.useRefreshToken === false)
+            return;
+        const id = setInterval(async () => {
+            var _a;
+            const tokens = loadTokens(storage);
+            if (!tokens || !tokens.refreshToken)
+                return;
+            const leeway = (_a = cfg.refreshLeewaySeconds) !== null && _a !== void 0 ? _a : 90;
+            if (shouldRefreshTokens(tokens, leeway)) {
+                await refreshIfNeeded();
+            }
+        }, 60000);
+        return () => clearInterval(id);
+    }, [cfg.useRefreshToken, cfg.refreshLeewaySeconds, storage, refreshIfNeeded]);
     const login = React.useCallback(async (opts) => {
         var _a, _b;
         const appRedirect = (_b = (_a = opts === null || opts === void 0 ? void 0 : opts.redirectTo) !== null && _a !== void 0 ? _a : cfg.defaultAppRedirect) !== null && _b !== void 0 ? _b : window.location.pathname;
@@ -290,39 +348,6 @@ function AuthProvider(props) {
             window.location.assign(cfg.postLogoutRedirectUri);
         }
     }, [cfg.endSessionEndpoint, cfg.postLogoutRedirectUri, storage]);
-    const shouldRefresh = (tokens) => {
-        var _a;
-        const now = Math.floor(Date.now() / 1000);
-        const leeway = (_a = cfg.refreshLeewaySeconds) !== null && _a !== void 0 ? _a : 90;
-        return tokens.expiresAt - leeway <= now;
-    };
-    const refreshIfNeeded = React.useCallback(async () => {
-        var _a, _b;
-        const tokens = loadTokens(storage);
-        if (!tokens)
-            return undefined;
-        if (!cfg.useRefreshToken)
-            return tokens;
-        if (!tokens.refreshToken)
-            return tokens;
-        if (!shouldRefresh(tokens))
-            return tokens;
-        const lockKey = (_a = cfg.refreshLockKey) !== null && _a !== void 0 ? _a : "ra_refresh_lock";
-        const ttl = (_b = cfg.refreshLockTtlMs) !== null && _b !== void 0 ? _b : 15000;
-        if (!tryAcquireLock(storage, lockKey, ttl)) {
-            await waitForUnlock(storage, lockKey, 6000);
-            return loadTokens(storage);
-        }
-        try {
-            const next = await refreshTokens(cfg, tokens.refreshToken);
-            saveTokens(storage, next);
-            setState((s) => ({ ...s, isAuthenticated: true, tokens: next }));
-            return next;
-        }
-        finally {
-            releaseLock(storage, lockKey);
-        }
-    }, [cfg, storage]);
     const getAccessToken = React.useCallback(async () => {
         const tokens = await refreshIfNeeded();
         return tokens === null || tokens === void 0 ? void 0 : tokens.accessToken;
@@ -346,15 +371,19 @@ function useAuth() {
 
 function RequireAuth(props) {
     const auth = useAuth();
+    const wasAuthenticated = React.useRef(false);
+    if (auth.isAuthenticated) {
+        wasAuthenticated.current = true;
+    }
     React.useEffect(() => {
         var _a;
         if (!auth.isLoading && !auth.isAuthenticated) {
             void auth.login({ redirectTo: (_a = props.redirectTo) !== null && _a !== void 0 ? _a : window.location.pathname });
         }
     }, [auth, props.redirectTo]);
-    if (auth.isLoading)
+    if (auth.isLoading && !wasAuthenticated.current)
         return null;
-    if (!auth.isAuthenticated)
+    if (!auth.isLoading && !auth.isAuthenticated)
         return null;
     return React.createElement(React.Fragment, null, props.children);
 }
