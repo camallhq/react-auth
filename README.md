@@ -63,6 +63,8 @@ Pass an `AuthConfig` object to `<AuthProvider config={...}>`.
 | `postLogoutRedirectUri` | `string` | — | Where to send the user after the IDP ends the session |
 | `scopes` | `string[]` | `["openid","profile","email"]` | OAuth scopes to request. Include `"offline_access"` for refresh tokens |
 | `audience` | `string` | — | Resource audience parameter (if required by your IDP) |
+| `prompt` | `PromptValue \| PromptValue[]` | — | OIDC `prompt` parameter controlling IDP interaction. Accepts a single value or an ordered array (e.g. `["login","consent"]` serialises to `"login consent"`). Valid values: `"none"`, `"login"`, `"consent"`, `"select_account"` |
+| `resource` | `string \| string[]` | — | OAuth2 resource indicator URI(s) per RFC 8707, forwarded to the authorization URL and token endpoint (code exchange and refresh). Use an array for multiple resource servers |
 | `extraAuthorizeParams` | `Record<string,string>` | — | Additional query parameters appended to the authorization URL |
 | `useRefreshToken` | `boolean` | `true` | Enable silent refresh using a refresh token |
 | `defaultAppRedirect` | `string` | `window.location.pathname` | App route to land on after login when no target was recorded |
@@ -156,6 +158,27 @@ authFetch(auth, input: RequestInfo | URL, init?: RequestInit): Promise<Response>
 | `"session"` (default) | Browser tab lifetime | Cleared when the tab is closed |
 | `"local"` | Persistent across tabs and restarts | Use with caution — tokens survive browser restarts |
 | `"memory"` | Current page lifetime | Nothing is written to `localStorage` or `sessionStorage`; useful for SSR or strict CSP environments |
+
+## Prompt & Resource
+
+Use `prompt` to control the IDP login/consent screen and `resource` to scope tokens to one or more resource servers.
+
+```tsx
+const config = {
+  issuer: "https://c00000.camall.io",
+  clientId: "spa-client",
+  redirectUri: window.location.origin + "/auth/callback",
+  // Force re-authentication and show the consent screen every time:
+  prompt: ["login", "consent"],
+  // Scope the issued tokens to specific APIs (RFC 8707):
+  resource: [
+    "https://api.example.com",
+    "https://graph.example.com",
+  ],
+};
+```
+
+When `resource` is an array, it produces repeated `resource=` parameters in both the authorization request and the token endpoint body, as required by RFC 8707.
 
 ## Refresh Token Support
 

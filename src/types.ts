@@ -1,6 +1,7 @@
 // src/types.ts
 export type AuthStorage = "memory" | "session" | "local";
 export type PostLoginNavigationMode = "replace" | "history";
+export type PromptValue = "none" | "login" | "consent" | "select_account";
 
 /**
  * AuthConfig defines the configuration options for the authentication system.
@@ -19,6 +20,8 @@ export type AuthConfig = {
 
   scopes?: string[];              // default: ["openid","profile","email"]
   audience?: string;              // if your IDP supports it
+  prompt?: PromptValue | PromptValue[];  // OIDC prompt parameter; array is joined with spaces
+  resource?: string | string[];   // OAuth2 resource indicator(s) per RFC 8707
   extraAuthorizeParams?: Record<string, string>;
 
   // If you do refresh tokens in SPA, your IDP must allow it (rotation recommended).

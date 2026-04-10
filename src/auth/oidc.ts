@@ -34,6 +34,20 @@ export async function buildAuthorizeUrl(cfg: AuthConfig, opts?: { appState?: str
   url.searchParams.set("nonce", nonce);
 
   if (cfg.audience) url.searchParams.set("audience", cfg.audience);
+
+  if (cfg.prompt) {
+    const promptValue = Array.isArray(cfg.prompt) ? cfg.prompt.join(" ") : cfg.prompt;
+    url.searchParams.set("prompt", promptValue);
+  }
+
+  if (cfg.resource) {
+    if (Array.isArray(cfg.resource)) {
+      for (const r of cfg.resource) url.searchParams.append("resource", r);
+    } else {
+      url.searchParams.set("resource", cfg.resource);
+    }
+  }
+
   if (opts?.appState) url.searchParams.set("app_state", opts.appState);
 
   if (cfg.extraAuthorizeParams) {
@@ -52,6 +66,14 @@ export async function exchangeCodeForTokens(cfg: AuthConfig, code: string, verif
   body.set("redirect_uri", cfg.redirectUri);
   body.set("code", code);
   body.set("code_verifier", verifier);
+
+  if (cfg.resource) {
+    if (Array.isArray(cfg.resource)) {
+      for (const r of cfg.resource) body.append("resource", r);
+    } else {
+      body.set("resource", cfg.resource);
+    }
+  }
 
   const res = await fetch(token, {
     method: "POST",
@@ -91,6 +113,14 @@ export async function refreshTokens(cfg: AuthConfig, refreshToken: string): Prom
   body.set("grant_type", "refresh_token");
   body.set("client_id", cfg.clientId);
   body.set("refresh_token", refreshToken);
+
+  if (cfg.resource) {
+    if (Array.isArray(cfg.resource)) {
+      for (const r of cfg.resource) body.append("resource", r);
+    } else {
+      body.set("resource", cfg.resource);
+    }
+  }
 
   const res = await fetch(token, {
     method: "POST",
