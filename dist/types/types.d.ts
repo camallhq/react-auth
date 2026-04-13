@@ -1,5 +1,6 @@
 export type AuthStorage = "memory" | "session" | "local";
 export type PostLoginNavigationMode = "replace" | "history";
+export type PromptValue = "none" | "login" | "consent" | "select_account";
 export type AuthConfig = {
     issuer: string;
     authorizeEndpoint?: string;
@@ -11,6 +12,8 @@ export type AuthConfig = {
     postLogoutRedirectUri?: string;
     scopes?: string[];
     audience?: string;
+    prompt?: PromptValue | PromptValue[];
+    resource?: string | string[];
     extraAuthorizeParams?: Record<string, string>;
     useRefreshToken?: boolean;
     defaultAppRedirect?: string;

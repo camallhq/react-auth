@@ -3,9 +3,10 @@
     "target": "ES2018",                            /* Specify ECMAScript target version. ES2018 supports async/await, Promise, Object.entries, etc. */
     "lib": ["ES2018", "DOM", "DOM.Iterable"],       /* Include DOM and ES2018 type definitions. */
     "module": "ESNext",                             /* Use ESNext modules for tree-shakeable output. */
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "jsx": "react",
     "declaration": true,                            /* Generates corresponding '.d.ts' file. */
+    "rootDir": "./src",
     "outDir": "dist/types",                         /* Redirect output structure to the directory. */
     "removeComments": true,                      /* Do not emit comments to output. */
     "strict": true,                                 /* Enable all strict type-checking options. */
